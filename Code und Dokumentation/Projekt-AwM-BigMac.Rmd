@@ -1,0 +1,262 @@
+---
+title: "Burgernomics & Kaufkraft: Was uns der Big-Mac-Index über Währungen und Wohlstand verrät"
+author: "Luc Benjamin Keim, Jannick Riond"
+date: "`r format(Sys.Date(), '%d.%m.%Y')`"
+lang: de-DE
+toc-title: "Inhaltsverzeichnis"
+bibliography: AwM.bib
+nocite: '@*'  # Druckt ALLE Einträge aus der .bib Datei
+output: 
+  rmdformats::html_clean:
+    self_contained: TRUE
+    number_sections: TRUE
+    toc: TRUE
+    toc_depth: 2
+    thumbnails: false
+    theme: lumen
+    highlight: pygments
+    pandoc_args:       # ← zusätzliche Argumente für Pandoc
+      - "--shift-heading-level-by=1"
+  pdf_document:
+    
+    latex_engine: "pdflatex"
+    toc: True
+    number_sections: True
+---
+
+\newpage
+# Hintergrund und Ziel der Arbeit
+Im Rahmen des Ergänzungsfaches *Angewandte Mathematik* haben wir uns mit dem BigMac-Index beschäftigt, ein wirtschaftlicher Indikator, der auf unterhaltsame Weise die Kaufkraftparität zwischen verschiedenen Ländern veranschaulicht. Er basiert auf der Idee, dass ein identisches Produkt (der Big Mac) überall gleich viel kosten sollte, wenn Wechselkurse die Kaufkraft korrekt widerspiegeln. Wir vergleichen den Big-Mac-basierten PPP-Kurs mit den nominalen Markt­kursen von mehr als 50 Ländern, um Über- und Unterbewertungen von Währungen sichtbar zu machen. Darüber hinaus koppeln wir den Burger-Preis an das BIP pro Kopf, um zu schätzen, wie viele Big Macs sich eine Durchschnitts­person pro Jahr leisten könnte, was eine anschauliche Messgrösse ist, die wir als Big-Mac-Kaufkraft interpretieren und als Massstab für relativen Wohlstand nutzen.
+
+\newpage
+
+# Datengrundlage
+## Verwendete R-Pakete
+```{r warning = FALSE, fig.width=7}
+library(tidyverse)
+library(dslabs) 
+library(countrycode)
+library(readxl)
+```
+## Datenstruktur
+Der Datensatz `grundlage_f` enthält folgende relevante Variabeln:
+
+- `local_price`: BigMac Preis in lokaler Währung  
+- `currency_code`: Währungscode (z.B. USD, EUR)  
+- `dollar_ex`: Wechselkurs zum US-Dollar  
+- `gdp_per_capita`: Bruttoinlandprodukt pro Kopf  
+- `Country`: Ländername
+
+## Laden des Datensatzes
+```{r}
+grundlage_f <- read_xlsx("C:\\Users\\riond\\Desktop\\grundlage_f.xlsx")
+```
+
+\newpage
+## Konfiguration
+Mit dem Befehl `view(grundlage_f)` können wir unsere Tabelle anschauen, um zu prüfen, ob sie vollständig und richtig importiert wurde.
+
+In unserem Fall müssen wir die wissenschaftliche Notation deaktivieren, um die Zahlen besser lesen zu können.
+```{r}
+options(scipen = 999)  # Deaktiviert wissenschaftliche Notation
+```
+
+# Datenaufbereitung und Berechnung
+## Referenzwert etablieren
+Um Preise verschiedener Länder miteinander vergleichen zu können, benötigen wir einen gemeinsamen Bezugspunkt. Ähnlich wie im Physikunterricht, wo beispielsweise alle Gewichtsangaben zunächst in kg umgewandelt werden müssen, bevor man sie miteinander verrechnen oder vergleichen kann.
+
+Der Big Mac Index wurde ursprünglich von *The Economist*, einem amerikanischen Wirschaftsmagazin, entwickelt und nutzt bewusst den US-amerikanischen Big Mac Preis als "Weltstandard". Aus diesem Grund haben wir uns ebenfalls dazu entschieden den US-Dollar als Referenzwert zu verwenden.
+```{r}
+# Preis eines US-Big-Macs (laut Tabelle, Zeile 51, Spalte 4)
+price_usa <- grundlage_f$local_price[grundlage_f$currency_code == "USD"]
+```
+
+## Berechnung ökonomischer Indikatoren
+
+### Begriffe: Kaufkraft, PPP, GDP
+
+Damit wir die ökonomischen Indikatoren berechnen können, müssen wir zunächst ein paar Begriffe erklären:
+
+> Die **Kaufkraft** (engl.: **"Purchasing Power"**) beschreibt die Menge an Waren und Dienstleistungen, die mit einer bestimmten Geldsumme zu einem gegebenen Zeitpunkt erworben werden kann; sie spiegelt somit den realen Wert des Geldes wider und sinkt bei steigenden Preisen (Inflation) bzw. steigt bei fallenden Preisen (Deflation).
+
+> **Kaufkraftparität** (engl.: **"Purchasing Power Parity"**, **PPP**) ist das theoretische Konzept, nach dem Wechselkurse sich langfristig so einstellen, dass ein identischer Waren- und Dienstleistungskorb in verschiedenen Ländern, nach Umrechnung in eine gemeinsame Währung, denselben Preis hat; Abweichungen davon erklären Unterschiede im Preisniveau bzw. in den Inflationsraten der Länder.
+
+> Das **Bruttoinlandprodukt** (**BIP**, engl.: **"Gross Domestic Product"**, **GDP**) ist der Gesamtwert aller in einer Volkswirtschaft innerhalb eines bestimmten Zeitraums (meist eines Jahres) produzierten Waren und Dienstleistungen zu Marktpreisen. Es dient als zentrale Messgrösse für die wirtschaftliche Leistung eines Landes.
+
+\newpage
+### Mathematische Formeln der berechneten Variabeln
+
+Der **BigMac-Preis in US-Dollar** ($P_{\text{USD}}$, auch `dollar_price`) berechnet sich wie folgt:
+
+$$P_{\text{USD}} = \frac{P_{\text{local}}}{E_{\text{USD}}}$$
+wobei
+
+- $P_{\text{local}}$ den lokalen Preis eines BigMacs im jeweiligen Land (`local_price`) angibt und
+- $E_{\text{USD}}$ den Wechselkurs zur Referenzwährung US-Dollar (`dollar_ex`) bezeichnet.
+
+
+Das **Kaufkraftparitätsverhältnis** des BigMacs ($PPP_{\text{BigMac}}$, auch `dollar_ppp`) gibt an, wie sich der Preis eines BigMacs im jeweiligen Land zum Preis in den USA verhält. Es wird folgendermassen berechnet:
+
+$$PPP_{\text{BigMac}} = \frac{P_{\text{local}}}{P_{\text{USA}}}$$
+Hierbei steht
+
+- $P_{\text{USA}}$ für den lokalen BigMac-Preis in den USA.
+
+Ein Wert von $PPP_{\text{BigMac}} > 1$ weist darauf hin, dass der BigMac im betrachteten Land teurer ist als in den USA (Überbewertung), während ein Wert $PPP_{\text{BigMac}} < 1$ eine Unterbewertung suggeriert.
+
+
+Die Frage, **wie viele Big Macs sich eine durchschnittliche Person mit dem nationalen BIP pro Kopf leisten könnte**, beantwortet die folgende Formel:
+
+$$\text{BigMac}_\text{GDP} = \frac{\text{GDP}_\text{per capita}}{P_\text{USD}}$$
+Dabei bezeichnet
+
+- $\text{GDP}_\text{per capita}$ das Bruttoinlandsprodukt pro Kopf und
+- $P_\text{USD}$ den umgerechneten BigMac-Preis in US-Dollar. 
+
+Dieser Wert quantifiziert, wie viele Big Macs eine Person im jeweiligen Land (theoretisch!) im Jahr kaufen könnte, unter der Annahme, dass das BIP pro Kopf gleichmässig auf alle Einwohner*innen verteilt wäre.
+
+### Code für die Indikatoren
+
+```{r}
+# Alle Berechnungen in einer Pipeline
+bmf <- grundlage_f %>%
+  mutate(
+    dollar_price = local_price / dollar_ex,
+    dollar_ppp = local_price / price_usa,
+    bigmac_gdp = gdp_per_capita / dollar_price)
+```
+
+\newpage
+## Datenbereinigung
+Die Euro Area als Wirtschaftsraum wird entfernt, da sie kein einzelnes Land darstellt.
+```{r}
+bmf <- bmf[-16, ]
+```
+
+
+# Datenanalyse und Visualisierung
+
+## Kontinentale Verteilungsanalyse
+
+Vergleich der BigMac-Kaufkraft ($\text{BigMac}_\text{GDP}$, auch `bigmac_gdp`) zwischen verschiedenen Kontinenten mittels Boxplot-Darstellung zur Identifikation von Verteilungsmustern und Ausreissern.
+
+```{r fig.align = 'center'}
+bmf$continent <- countrycode(sourcevar = bmf$Country,
+                             origin = "country.name",
+                             destination = "continent")
+
+ggplot(bmf, aes(x = continent, y = bigmac_gdp, fill = continent)) +
+  geom_boxplot() +
+  labs(title = "Bigmac-GDP nach Kontinent",
+       x = "Kontinent", y = "Bigmacs pro Kopf") 
+```
+
+## Korrelationsanalyse
+
+### Korrelationskoeffizient
+
+In diesem Abschnitt untersuchen wir, wie stark der Zusammenhang zwischen zwei Variablen (`gdp_per_capita` und `bigmac_gdp`) ist:
+
+$$r = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i - \bar{x})^2 \sum_{i=1}^{n}(y_i - \bar{y})^2}}$$
+Es gilt: $-1 \ge r_{xy} \ge 1$
+
+Wobei:
+
+- $r = 1$ eine perfekten postivien Zusammenhang darstellt,
+- $r = 0$ keinen linearen Zusammenhang und
+- $r = -1$ einen perfekten negativen Zusammenhang darstellt.
+
+In R können wir das viel einfacher mit folgender Funktion ausrechnen:
+
+```{r}
+cor(bmf$gdp_per_capita, bmf$bigmac_gdp, use = "complete.obs")
+```
+In unserem Fall ist $r = 0.9195871$.
+
+Interpretation: Es besteht ein sehr starker, positiver Zusammenhang zwischen dem BIP pro Kopf und dem BigMac-GDP.
+
+### Lineare Regression
+
+Während die Korrelation nur die Stärke des Zusammenhangs beschreibt, zeigt die **lineare Regression** auch, wie die eine Variable die andere „vorhersagt“.
+Das Ergebnis ist eine sogenannte **Regressionsgerade**, die man auch in Diagrammen einzeichnen kann.
+
+Eine lineare Gleichung kennen wir als:
+
+$$y = mx + b$$
+
+Ein lineares Regressionsmodell wird häufig so formuliert:
+
+$$\hat{y}_i = \beta_1 x_i + \beta_0$$
+
+Die gesuchte Gerade soll so gewählt werden, dass die quadrierten Abstände zwischen den durch das Modell vorhergesagten und den
+empirisch beobachteten Werten minimiert werden; es soll also gelten:
+
+$$\sum_{i=1}^{n}{{\varepsilon_i}^2} = \sum_{i=1}^{n}{(y_i - \hat{y_i})^2} = \text{Minimum}$$
+Der Fehlerwert $\varepsilon$ ergibt sich also aus:
+
+$$\varepsilon_i = y_i - \hat{y_i}$$
+
+Unser Regressionsmodell lässt demnach wie folgt formulieren, wobei $\varepsilon$ zu minimieren ist.
+
+$$\text{BigMac}_{GDP} = \beta_0 + \beta_1 \cdot \text{GDP}_{\text{per capita}} + \varepsilon$$
+
+Da diese Minimierungsaufgabe rechnerisch eher anspruchsvoll ist, verwenden wir in R die `lm()`-Funktion.
+
+```{r}
+Regressionsgerade <- lm(bigmac_gdp ~ gdp_per_capita, data = bmf)
+summary(Regressionsgerade)
+```
+
+Aus der Konsole lassen sich nun unsere Resultate ablesen.
+
+Wir erhalten
+
+- $\beta_0 = 1182.07948$ und
+- $\beta_1 = 0.17338$.
+
+\newpage
+### Scatterplot mit Regressionsgerade
+
+```{r fig.pos = 'h', fig.align = 'center'}
+ggplot(bmf, aes(x = gdp_per_capita, y = bigmac_gdp, label = Country)) +
+  geom_point(color = "darkblue", size = 0.1) +
+  geom_text(size = 2, vjust = -0.5, check_overlap = TRUE) +
+  labs(title = "Bigmac-GDP vs. BIP pro Kopf",
+       x = "BIP pro Kopf (in USD)", y = "Bigmac-GDP (BigMacs pro Jahr)") +
+  geom_abline(intercept = 1182.0748, slope = 0.17338)
+```
+
+## Anwendungsspezifische Analyse: Die idealen Reiseziele
+
+### Filterkriterien
+
+$$S = {\text{Land}_i : P_{\text{USD},i} \leq 4.5 \land \text{GDP}_{\text{per capita},i} > 30000}$$
+
+```{r}
+guter_ferienort <- bmf %>%
+  filter(dollar_price <= 4.5) %>%  # Günstige BigMac Preise
+  filter(gdp_per_capita > 30000)   # Hohe wirtschaftliche Entwicklung
+```
+
+\newpage
+### Ergebnisvisualisierung
+
+```{r fig.pos = 'h', fig.align = 'center'}
+ggplot(guter_ferienort, aes(x = gdp_per_capita, y = dollar_price, label= Country))+
+  geom_point(color = "brown", size=1)+
+  geom_text(size=4, vjust= -0.5, check_overlap = TRUE)+
+  theme_minimal()+
+  labs(title = "USD-Preis pro BigMac vs. BIP pro Kopf",
+       x = "BIP pro Kopf (in USD)", y = "USD-Preis pro BigMac")+
+  xlim(25000, 90000)+
+  ylim(1, 5)
+```
+\newpage
+# Quellen {-}
+
+<div id="refs"></div>
+
+# GitHub {-}
+Das *.rmd*-File sowie das *.html*- und das *.pdf*-File sind in auf GitHub einsehbar unter:
+
+<https://github.com/jannickr2j1/AwM_RProjekt_BigMac>
