@@ -1,27 +1,30 @@
 ---
-title: "Burgernomics & Kaufkraft: Was uns der Big-Mac-Index über Währungen und Wohlstand verrät"
+title: "Burgernomics & Kaufkraft: Was uns der Big-Mac-Index über Währungen und Wohlstand
+  verrät"
 author: "Luc Benjamin Keim, Jannick Riond"
 date: "`r format(Sys.Date(), '%d.%m.%Y')`"
-lang: de-DE
-toc-title: "Inhaltsverzeichnis"
-bibliography: AwM.bib
-nocite: '@*'  # Druckt ALLE Einträge aus der .bib Datei
-output: 
+output:
   rmdformats::html_clean:
-    self_contained: TRUE
-    number_sections: TRUE
-    toc: TRUE
+    self_contained: true
+    number_sections: true
+    toc: true
     toc_depth: 2
     thumbnails: false
     theme: lumen
     highlight: pygments
-    pandoc_args:       # ← zusätzliche Argumente für Pandoc
-      - "--shift-heading-level-by=1"
+    pandoc_args: "--shift-heading-level-by=1"
+  html_document:
+    toc: true
+    toc_depth: '2'
+    df_print: paged
   pdf_document:
-    
-    latex_engine: "pdflatex"
-    toc: True
-    number_sections: True
+    latex_engine: pdflatex
+    toc: true
+    number_sections: true
+toc-title: Inhaltsverzeichnis
+bibliography: AwM.bib
+nocite: '@*'
+lang: "de-DE"
 ---
 
 \newpage
@@ -252,11 +255,12 @@ ggplot(guter_ferienort, aes(x = gdp_per_capita, y = dollar_price, label= Country
   ylim(1, 5)
 ```
 \newpage
+
 # Quellen {-}
 
 <div id="refs"></div>
 
 # GitHub {-}
-Das *.rmd*-File sowie das *.html*- und das *.pdf*-File sind in auf GitHub einsehbar unter:
+Das *.rmd*-File sowie das *.html*- und das *.pdf*-File sind auf GitHub einsehbar unter:
 
 <https://github.com/jannickr2j1/AwM_RProjekt_BigMac>
